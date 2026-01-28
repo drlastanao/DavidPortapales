@@ -179,10 +179,47 @@ public partial class MainWindow : Window
     {
         try
         {
+            // 1. Check for Files first (User copied a file)
             var formats = await clipboard.GetFormatsAsync();
             if (formats == null) return null;
 
-            string[] imageFormats = { "image/png", "png", "image/jpeg", "image/bmp", "Bitmap" };
+            if (formats.Contains(DataFormats.FileNames))
+            {
+                 // Handle file drop (image files)
+                 var fileData = await clipboard.GetDataAsync(DataFormats.FileNames);
+                 if (fileData is System.Collections.IEnumerable fileList)
+                 {
+                     foreach (var item in fileList) 
+                     {
+                         if (item is string path && File.Exists(path))
+                         {
+                             var ext = Path.GetExtension(path).ToLower();
+                             if (new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".ico" }.Contains(ext))
+                             {
+                                 try 
+                                 {
+                                     return new Bitmap(path);
+                                 }
+                                 catch 
+                                 {
+                                     // Failed to load this file, try next
+                                 }
+                             }
+                         }
+                     }
+                 }
+            }
+
+            // 2. Check for Bitmap Data
+            // Expand formats list for Windows specifics
+            string[] imageFormats = { 
+                "Bitmap", 
+                "DeviceIndependentBitmap",
+                "image/png", 
+                "png", 
+                "image/jpeg", 
+                "image/bmp" 
+            };
             
             foreach (var format in imageFormats)
             {
@@ -192,6 +229,7 @@ public partial class MainWindow : Window
                     
                     if (data is byte[] bytes)
                     {
+                        // Some hacks for DIB might be needed here if raw bytes, but let's try generic stream
                         return new Bitmap(new MemoryStream(bytes));
                     }
                     else if (data is Stream stream)
