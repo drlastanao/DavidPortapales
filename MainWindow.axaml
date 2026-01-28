@@ -43,7 +43,10 @@
                         <DataTemplate DataType="local:ClipboardItem">
                             <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">
                                 <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Copiar" Click="OnCopyClick" VerticalAlignment="Top" Margin="10,0,0,0"/>
+                                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="10,0,0,0">
+                                        <Button Content="Copiar" Click="OnCopyClick" IsVisible="{Binding IsText}"/>
+                                        <Button Content="Salvar" Click="OnSaveClick" IsVisible="{Binding IsImage}"/>
+                                    </StackPanel>
                                     
                                     <StackPanel Spacing="5">
                                         <StackPanel Orientation="Horizontal" Spacing="10">

@@ -211,34 +211,42 @@ public partial class MainWindow : Window
             }
 
             // 2. Check for Bitmap Data
-            // Expand formats list for Windows specifics
+            // Prioritize standard formats that are easier to parse (PNG/JPEG)
             string[] imageFormats = { 
-                "Bitmap", 
-                "DeviceIndependentBitmap",
                 "image/png", 
                 "png", 
                 "image/jpeg", 
-                "image/bmp" 
+                "image/bmp",
+                "Bitmap", // Internal or simple
+                "DeviceIndependentBitmap" // Often problematic without headers
             };
             
             foreach (var format in imageFormats)
             {
                 if (formats.Any(f => f.Equals(format, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var data = await clipboard.GetDataAsync(format);
-                    
-                    if (data is byte[] bytes)
+                    try 
                     {
-                        // Some hacks for DIB might be needed here if raw bytes, but let's try generic stream
-                        return new Bitmap(new MemoryStream(bytes));
+                        var data = await clipboard.GetDataAsync(format);
+                        
+                        if (data is byte[] bytes)
+                        {
+                            return new Bitmap(new MemoryStream(bytes));
+                        }
+                        else if (data is Stream stream)
+                        {
+                            return new Bitmap(stream);
+                        }
+                        else if (data is Bitmap bmp)
+                        {
+                            return bmp;
+                        }
                     }
-                    else if (data is Stream stream)
+                    catch
                     {
-                        return new Bitmap(stream);
-                    }
-                    else if (data is Bitmap bmp)
-                    {
-                        return bmp;
+                        // Some formats (like DIB) might be present but unparsable as simple Bitmap
+                        // Ignore and try next format
+                        // Console.WriteLine($"Debug: Failed to parse format {format}");
                     }
                 }
             }
@@ -286,8 +294,24 @@ public partial class MainWindow : Window
                     _lastText = null;
 
                     var data = new DataObject();
-                    data.Set("Bitmap", item.ImageContent); 
+                    
+                    using (var ms = new MemoryStream())
+                    {
+                        item.ImageContent.Save(ms);
+                        var bytes = ms.ToArray();
+                        
+                        // Standard for Linux (X11/Wayland usually respect image/png)
+                        data.Set("image/png", new MemoryStream(bytes));
+                        
+                        // Windows compat
+                        data.Set("PNG", new MemoryStream(bytes));
+                    }
+                    
+                    // Fallback
+                    data.Set("Bitmap", item.ImageContent);
+                    
                     await clipboard.SetDataObjectAsync(data);
+
                 }
                 
                 // Optional: Flash on copy back too
@@ -298,5 +322,42 @@ public partial class MainWindow : Window
                 Console.WriteLine($"Error al copiar al portapapeles: {ex.Message}");
             }
         }
+
+    }
+
+    public async void OnSaveClick(object? sender, RoutedEventArgs e)
+    {
+         if (sender is Control control && control.DataContext is ClipboardItem item && item.IsImage && item.ImageContent != null)
+         {
+             try 
+             {
+                 var topLevel = GetTopLevel(this);
+                 if (topLevel == null) return;
+
+                 var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+                 {
+                     Title = "Guardar Imagen",
+                     DefaultExtension = "png",
+                     FileTypeChoices = new[]
+                     {
+                        new Avalonia.Platform.Storage.FilePickerFileType("PNG Image") { Patterns = new[] { "*.png" } },
+                        new Avalonia.Platform.Storage.FilePickerFileType("All Files") { Patterns = new[] { "*.*" } }
+                     }
+                 });
+
+                 if (file != null)
+                 {
+                     using (var stream = await file.OpenWriteAsync())
+                     {
+                         item.ImageContent.Save(stream);
+                     }
+                     FlashWidget();
+                 }
+             }
+             catch (Exception ex)
+             {
+                 Console.WriteLine($"Error al guardar imagen: {ex.Message}");
+             }
+         }
     }
 }
