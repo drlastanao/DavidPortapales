@@ -8,7 +8,10 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Avalonia.Input.Platform; // For IClipboard
+using Avalonia.Input; 
+using Avalonia.Input.Platform;
+
+#pragma warning disable CS0618 // Suppress obsolete warnings
 
 namespace DavidPortapales;
 
@@ -16,10 +19,8 @@ public partial class MainWindow : Window
 {
     private DispatcherTimer _timer;
     
-    // Historial observable para la UI
     public ObservableCollection<ClipboardItem> History { get; set; } = new ObservableCollection<ClipboardItem>();
 
-    // Para evitar duplicados
     private string? _lastText;
     private string? _lastImageHash; 
 
@@ -28,13 +29,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         
-        // Initialize the timer
         _timer = new DispatcherTimer();
         _timer.Interval = TimeSpan.FromSeconds(5);
         _timer.Tick += Timer_Tick;
         _timer.Start();
 
-        // Check immediately on startup
         CheckClipboard();
     }
 
@@ -50,39 +49,27 @@ public partial class MainWindow : Window
             var clipboard = GetTopLevel(this)?.Clipboard;
             if (clipboard == null) return;
 
-            // 1. Intentar obtener texto
-            string? text = null;
-            try 
-            {
-                text = await clipboard.GetTextAsync();
-            }
-            catch {} // Ignorar errores de texto
+            string? text = await clipboard.GetTextAsync(); 
 
             bool textChanged = !string.IsNullOrEmpty(text) && text != _lastText;
 
             if (textChanged)
             {
                 _lastText = text;
-                _lastImageHash = null; // Reiniciar hash de imagen
+                _lastImageHash = null; 
                 var item = new ClipboardItem(text!);
                 History.Insert(0, item);
-                return; // Priorizamos texto si cambió
+                return; 
             }
 
-            // 2. Si no hay cambio de texto, intentar imagen
-            // Solo si el último item no era el mismo texto (o si es null)
-            // Aunque si el usuario copia lo mismo, el sistema suele actualizar el timestamp interno, pero content es igual.
-            // Nuestra logica: solo guardar si es diferente.
-            
             var image = await GetClipboardImageAsync(clipboard);
             if (image != null)
             {
-                // Calcular hash para comparar
                 var hash = ComputeImageHash(image);
                 if (hash != _lastImageHash)
                 {
                     _lastImageHash = hash;
-                    _lastText = null; // Reiniciar texto
+                    _lastText = null; 
                     var item = new ClipboardItem(image);
                     History.Insert(0, item);
                 }
@@ -90,7 +77,6 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            // Opcional: Loguear error en UI o consola
             Console.WriteLine($"Error al leer portapapeles: {ex.Message}");
         }
     }
@@ -102,7 +88,6 @@ public partial class MainWindow : Window
             var formats = await clipboard.GetFormatsAsync();
             if (formats == null) return null;
 
-            // Lista de formatos comunes de imagen en Linux/Windows
             string[] imageFormats = { "image/png", "png", "image/jpeg", "image/bmp", "Bitmap" };
             
             foreach (var format in imageFormats)
@@ -119,7 +104,6 @@ public partial class MainWindow : Window
                     {
                         return new Bitmap(stream);
                     }
-                    // A veces Avalonia devuelve ya un Bitmap si es formato nativo
                     else if (data is Bitmap bmp)
                     {
                         return bmp;
@@ -136,8 +120,6 @@ public partial class MainWindow : Window
 
     private string ComputeImageHash(Bitmap bitmap)
     {
-        // Guardar a stream para hashear los bytes
-        // Esto puede ser costoso para imágenes grandes, pero necesario para comparar contendo real.
         using (var ms = new MemoryStream())
         {
             bitmap.Save(ms);
@@ -146,6 +128,39 @@ public partial class MainWindow : Window
             {
                 var hashBytes = sha256.ComputeHash(bytes);
                 return Convert.ToBase64String(hashBytes);
+            }
+        }
+    }
+
+    public async void OnCopyClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control control && control.DataContext is ClipboardItem item)
+        {
+            try 
+            {
+                var clipboard = GetTopLevel(this)?.Clipboard;
+                if (clipboard == null) return;
+
+                if (item.IsText && item.TextContent != null)
+                {
+                    _lastText = item.TextContent; 
+                    _lastImageHash = null;
+                    
+                    await clipboard.SetTextAsync(item.TextContent);
+                }
+                else if (item.IsImage && item.ImageContent != null)
+                {
+                    _lastImageHash = ComputeImageHash(item.ImageContent);
+                    _lastText = null;
+
+                    var data = new DataObject();
+                    data.Set("Bitmap", item.ImageContent); 
+                    await clipboard.SetDataObjectAsync(data);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al copiar al portapapeles: {ex.Message}");
             }
         }
     }
