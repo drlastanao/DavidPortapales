@@ -1,0 +1,46 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio 2015+
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.mono
+*.ide
+*.pidb
+*.resources
+test-results/
+
+# MacOS
+.DS_Store
+
+# Linux
+*~
+
+# ClickOnce
+publish/
+
+# BenchmarkDotNet
+Artifacts/
+
+# DotnetCli
+*.lock.json
+project.lock.json
+artifacts/
+
+# Avalonia
+*.Avalonia/
