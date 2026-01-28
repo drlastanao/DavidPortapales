@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using System;
 using System.Collections.ObjectModel;
@@ -10,6 +11,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Avalonia.Input; 
 using Avalonia.Input.Platform;
+using Avalonia; // For PixelPoint
 
 #pragma warning disable CS0618 // Suppress obsolete warnings
 
@@ -18,6 +20,7 @@ namespace DavidPortapales;
 public partial class MainWindow : Window
 {
     private DispatcherTimer _timer;
+    private bool _isMiniMode = true;
     
     public ObservableCollection<ClipboardItem> History { get; set; } = new ObservableCollection<ClipboardItem>();
 
@@ -29,12 +32,83 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         
+        // Setup initial state
+        SetMiniMode();
+
         _timer = new DispatcherTimer();
-        _timer.Interval = TimeSpan.FromSeconds(5);
+        _timer.Interval = TimeSpan.FromSeconds(1); // Faster check for responsiveness
         _timer.Tick += Timer_Tick;
         _timer.Start();
 
         CheckClipboard();
+        
+        // Setup Double Click (DoubleTapped) 
+        var miniWidget = this.FindControl<Border>("MiniWidget");
+        if (miniWidget != null)
+        {
+            miniWidget.DoubleTapped += (s, e) => ToggleMode();
+        }
+    }
+    
+    private void SetMiniMode()
+    {
+        _isMiniMode = true;
+        
+        var miniWidget = this.FindControl<Border>("MiniWidget");
+        var mainView = this.FindControl<Border>("MainView");
+        
+        if (miniWidget != null) miniWidget.IsVisible = true;
+        if (mainView != null) mainView.IsVisible = false;
+
+        // Resize window to widget size
+        this.Width = 50;
+        this.Height = 50;
+        
+        // Position at top center
+        var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen != null)
+        {
+            var workingArea = screen.WorkingArea;
+            var x = workingArea.X + (workingArea.Width - 50) / 2;
+            var y = workingArea.Y + 10; // 10px padding from top
+            this.Position = new PixelPoint(x, y);
+        }
+    }
+
+    private void SetExpandedMode()
+    {
+        _isMiniMode = false;
+        
+        var miniWidget = this.FindControl<Border>("MiniWidget");
+        var mainView = this.FindControl<Border>("MainView");
+        
+        if (miniWidget != null) miniWidget.IsVisible = false;
+        if (mainView != null) mainView.IsVisible = true;
+
+        // Resize window to standard size
+        this.Width = 600;
+        this.Height = 500;
+        
+        // Center on screen
+        var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen != null)
+        {
+            var workingArea = screen.WorkingArea;
+            var x = workingArea.X + (workingArea.Width - 600) / 2;
+            var y = workingArea.Y + (workingArea.Height - 500) / 2;
+            this.Position = new PixelPoint(x, y);
+        }
+    }
+    
+    private void ToggleMode()
+    {
+        if (_isMiniMode) SetExpandedMode();
+        else SetMiniMode();
+    }
+    
+    public void OnMinimizeClick(object? sender, RoutedEventArgs e)
+    {
+         SetMiniMode();
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
@@ -49,6 +123,8 @@ public partial class MainWindow : Window
             var clipboard = GetTopLevel(this)?.Clipboard;
             if (clipboard == null) return;
 
+            // Use TryGetTextAsync if possible to avoid exceptions
+            // But stick to what worked with pragmas.
             string? text = await clipboard.GetTextAsync(); 
 
             bool textChanged = !string.IsNullOrEmpty(text) && text != _lastText;
@@ -59,6 +135,7 @@ public partial class MainWindow : Window
                 _lastImageHash = null; 
                 var item = new ClipboardItem(text!);
                 History.Insert(0, item);
+                FlashWidget();
                 return; 
             }
 
@@ -72,12 +149,29 @@ public partial class MainWindow : Window
                     _lastText = null; 
                     var item = new ClipboardItem(image);
                     History.Insert(0, item);
+                    FlashWidget();
                 }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error al leer portapapeles: {ex.Message}");
+        }
+    }
+    
+    private async void FlashWidget()
+    {
+        // Simple visual feedback: change widget background color briefly
+        if (_isMiniMode)
+        {
+            var miniWidget = this.FindControl<Border>("MiniWidget");
+            if (miniWidget != null)
+            {
+                var originalBrush = miniWidget.Background;
+                miniWidget.Background = Brushes.Yellow; // Highlight
+                await Task.Delay(200);
+                miniWidget.Background = originalBrush;
+            }
         }
     }
 
@@ -157,6 +251,9 @@ public partial class MainWindow : Window
                     data.Set("Bitmap", item.ImageContent); 
                     await clipboard.SetDataObjectAsync(data);
                 }
+                
+                // Optional: Flash on copy back too
+                FlashWidget();
             }
             catch (Exception ex)
             {

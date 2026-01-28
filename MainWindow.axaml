@@ -7,49 +7,75 @@
         x:Class="DavidPortapales.MainWindow"
         x:DataType="local:MainWindow"
         Title="Monitor de Portapapeles"
-        x:Name="RootWindow">
-	<Grid RowDefinitions="Auto,*">
-		<TextBlock Grid.Row="0" Text="Historial del Portapapeles (se actualiza cada 5s):" FontWeight="Bold" Margin="10"/>
-		<ListBox Grid.Row="1" ItemsSource="{Binding History}" Margin="10">
-			<ListBox.ItemTemplate>
-				<DataTemplate DataType="local:ClipboardItem">
-					<Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">
-						<DockPanel>
-                            <!-- Botón copiar a la derecha -->
-                            <Button DockPanel.Dock="Right" Content="Copiar" Click="OnCopyClick" VerticalAlignment="Top" Margin="10,0,0,0"/>
-                            
-                            <!-- Contenido principal -->
-							<StackPanel Spacing="5">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="Gray" FontSize="12"/>
-                                    <TextBlock Text="{Binding TypeDisplay}" Foreground="#0077aa" FontSize="12"/>
-                                </StackPanel>
-								
-								<!-- Vista Texto -->
-								<StackPanel IsVisible="{Binding IsText}">
-                                    <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                        <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="DimGray"/>
-                                        <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="DimGray"/>
+        x:Name="RootWindow"
+        Icon="/Assets/clipboard_icon.png"
+        SystemDecorations="None"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
+        WindowStartupLocation="Manual">
+        
+    <Grid>
+        <!-- Vista Minimizada (Widget) -->
+        <Border Name="MiniWidget"
+                Background="#202020" 
+                CornerRadius="10" 
+                Width="50" Height="50"
+                IsVisible="True"
+                Padding="10">
+             <Image Source="/Assets/clipboard_icon.png" />
+        </Border>
+
+        <!-- Vista Expandida (Historial) -->
+        <Border Name="MainView"
+                Background="White"
+                BorderBrush="Gray"
+                BorderThickness="1"
+                IsVisible="False">
+            <Grid RowDefinitions="Auto,*">
+                <DockPanel Grid.Row="0" Background="#f0f0f0" LastChildFill="False">
+                    <TextBlock Text="Historial" VerticalAlignment="Center" Margin="10" FontWeight="Bold"/>
+                    <Button Content="Minimizar (Doble Click)" DockPanel.Dock="Right" Click="OnMinimizeClick" Margin="5"/>
+                </DockPanel>
+                
+                <ListBox Grid.Row="1" ItemsSource="{Binding History}" Margin="10">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="local:ClipboardItem">
+                            <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Copiar" Click="OnCopyClick" VerticalAlignment="Top" Margin="10,0,0,0"/>
+                                    
+                                    <StackPanel Spacing="5">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="Gray" FontSize="12"/>
+                                            <TextBlock Text="{Binding TypeDisplay}" Foreground="#0077aa" FontSize="12"/>
+                                        </StackPanel>
+                                        
+                                        <StackPanel IsVisible="{Binding IsText}">
+                                            <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                                <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="DimGray"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        
+                                        <StackPanel IsVisible="{Binding IsImage}">
+                                            <Image Source="{Binding ImageContent}" MaxHeight="200" Stretch="Uniform" HorizontalAlignment="Left"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                                <TextBlock Text="Resolución:" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="x" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="px" FontSize="10" Foreground="DimGray"/>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </StackPanel>
-								</StackPanel>
-								
-								<!-- Vista Imagen -->
-								<StackPanel IsVisible="{Binding IsImage}">
-									<Image Source="{Binding ImageContent}" MaxHeight="200" Stretch="Uniform" HorizontalAlignment="Left"/>
-									<StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                        <TextBlock Text="Resolución:" FontSize="10" Foreground="DimGray"/>
-                                        <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="DimGray"/>
-                                        <TextBlock Text="x" FontSize="10" Foreground="DimGray"/>
-                                        <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="DimGray"/>
-                                        <TextBlock Text="px" FontSize="10" Foreground="DimGray"/>
-                                    </StackPanel>
-								</StackPanel>
-							</StackPanel>
-						</DockPanel>
-					</Border>
-				</DataTemplate>
-			</ListBox.ItemTemplate>
-		</ListBox>
-	</Grid>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
