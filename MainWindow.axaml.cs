@@ -7,11 +7,11 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Avalonia.Input; 
 using Avalonia.Input.Platform;
 using Avalonia; // For PixelPoint
+using DavidPortapales.Services;
 
 #pragma warning disable CS0618 // Suppress obsolete warnings
 
@@ -19,35 +19,56 @@ namespace DavidPortapales;
 
 public partial class MainWindow : Window
 {
-    private DispatcherTimer _timer;
     private bool _isMiniMode = true;
     
-    public ObservableCollection<ClipboardItem> History { get; set; } = new ObservableCollection<ClipboardItem>();
+    private ClipboardService? _clipboardService;
+    private HistoryManager? _historyManager;
 
-    private string? _lastText;
-    private string? _lastImageHash; 
+    // Expose History for Binding
+    public ObservableCollection<ClipboardItem> History => _historyManager?.History ?? new ObservableCollection<ClipboardItem>();
 
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = this;
+        // DataContext will be set in OnOpened after services are ready
         
         // Setup initial state
         SetMiniMode();
 
-        _timer = new DispatcherTimer();
-        _timer.Interval = TimeSpan.FromSeconds(1); // Faster check for responsiveness
-        _timer.Tick += Timer_Tick;
-        _timer.Start();
-
-        CheckClipboard();
-        
         // Setup Double Click (DoubleTapped) 
         var miniWidget = this.FindControl<Border>("MiniWidget");
         if (miniWidget != null)
         {
             miniWidget.DoubleTapped += (s, e) => ToggleMode();
         }
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        var clipboard = GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            _clipboardService = new ClipboardService(clipboard);
+            _historyManager = new HistoryManager(_clipboardService, () => FlashWidget());
+            
+            // Start monitoring
+            _historyManager.StartMonitoring();
+
+            // Set DataContext now that History is available
+            DataContext = this;
+        }
+        else
+        {
+            Console.WriteLine("Clipboard not available on init.");
+        }
+    }
+    
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        _historyManager?.StopMonitoring();
+        base.OnClosing(e);
     }
     
     private void SetMiniMode()
@@ -64,14 +85,14 @@ public partial class MainWindow : Window
         this.Width = 50;
         this.Height = 50;
         
-        // Position at top center
-        var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
+        // Position at top right of CURRENT screen
+        var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
         if (screen != null)
         {
             var workingArea = screen.WorkingArea;
-            var x = workingArea.X + (workingArea.Width - 50) / 2;
+            var x = workingArea.X + workingArea.Width - 50 - 20; // 20px padding from right
             var y = workingArea.Y + 10; // 10px padding from top
-            this.Position = new PixelPoint(x, y);
+            this.Position = new PixelPoint((int)x, (int)y);
         }
     }
 
@@ -111,210 +132,47 @@ public partial class MainWindow : Window
          SetMiniMode();
     }
 
-    private void Timer_Tick(object? sender, EventArgs e)
-    {
-        CheckClipboard();
-    }
-
-    private async void CheckClipboard()
-    {
-        try
-        {
-            var clipboard = GetTopLevel(this)?.Clipboard;
-            if (clipboard == null) return;
-
-            // Use TryGetTextAsync if possible to avoid exceptions
-            // But stick to what worked with pragmas.
-            string? text = await clipboard.GetTextAsync(); 
-
-            bool textChanged = !string.IsNullOrEmpty(text) && text != _lastText;
-
-            if (textChanged)
-            {
-                _lastText = text;
-                _lastImageHash = null; 
-                var item = new ClipboardItem(text!);
-                History.Insert(0, item);
-                FlashWidget();
-                return; 
-            }
-
-            var image = await GetClipboardImageAsync(clipboard);
-            if (image != null)
-            {
-                var hash = ComputeImageHash(image);
-                if (hash != _lastImageHash)
-                {
-                    _lastImageHash = hash;
-                    _lastText = null; 
-                    var item = new ClipboardItem(image);
-                    History.Insert(0, item);
-                    FlashWidget();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al leer portapapeles: {ex.Message}");
-        }
-    }
-    
-    private async void FlashWidget()
+    public void FlashWidget()
     {
         // Simple visual feedback: change widget background color briefly
         if (_isMiniMode)
         {
-            var miniWidget = this.FindControl<Border>("MiniWidget");
-            if (miniWidget != null)
-            {
-                var originalBrush = miniWidget.Background;
-                miniWidget.Background = Brushes.Yellow; // Highlight
-                await Task.Delay(200);
-                miniWidget.Background = originalBrush;
-            }
-        }
-    }
-
-    private async Task<Bitmap?> GetClipboardImageAsync(IClipboard clipboard)
-    {
-        try
-        {
-            // 1. Check for Files first (User copied a file)
-            var formats = await clipboard.GetFormatsAsync();
-            if (formats == null) return null;
-
-            if (formats.Contains(DataFormats.FileNames))
-            {
-                 // Handle file drop (image files)
-                 var fileData = await clipboard.GetDataAsync(DataFormats.FileNames);
-                 if (fileData is System.Collections.IEnumerable fileList)
-                 {
-                     foreach (var item in fileList) 
-                     {
-                         if (item is string path && File.Exists(path))
-                         {
-                             var ext = Path.GetExtension(path).ToLower();
-                             if (new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".ico" }.Contains(ext))
-                             {
-                                 try 
-                                 {
-                                     return new Bitmap(path);
-                                 }
-                                 catch 
-                                 {
-                                     // Failed to load this file, try next
-                                 }
-                             }
-                         }
-                     }
-                 }
-            }
-
-            // 2. Check for Bitmap Data
-            // Prioritize standard formats that are easier to parse (PNG/JPEG)
-            string[] imageFormats = { 
-                "image/png", 
-                "png", 
-                "image/jpeg", 
-                "image/bmp",
-                "Bitmap", // Internal or simple
-                "DeviceIndependentBitmap" // Often problematic without headers
-            };
-            
-            foreach (var format in imageFormats)
-            {
-                if (formats.Any(f => f.Equals(format, StringComparison.OrdinalIgnoreCase)))
+            Dispatcher.UIThread.Post(async () => {
+                var miniWidget = this.FindControl<Border>("MiniWidget");
+                if (miniWidget != null)
                 {
-                    try 
-                    {
-                        var data = await clipboard.GetDataAsync(format);
-                        
-                        if (data is byte[] bytes)
-                        {
-                            return new Bitmap(new MemoryStream(bytes));
-                        }
-                        else if (data is Stream stream)
-                        {
-                            return new Bitmap(stream);
-                        }
-                        else if (data is Bitmap bmp)
-                        {
-                            return bmp;
-                        }
-                    }
-                    catch
-                    {
-                        // Some formats (like DIB) might be present but unparsable as simple Bitmap
-                        // Ignore and try next format
-                        // Console.WriteLine($"Debug: Failed to parse format {format}");
-                    }
+                    var originalBrush = miniWidget.Background;
+                    miniWidget.Background = Brushes.Yellow; // Highlight
+                    await Task.Delay(200);
+                    miniWidget.Background = originalBrush;
                 }
-            }
-        }
-        catch (Exception ex) 
-        {
-             Console.WriteLine($"Error obteniendo imagen: {ex.Message}");
-        }
-        return null;
-    }
-
-    private string ComputeImageHash(Bitmap bitmap)
-    {
-        using (var ms = new MemoryStream())
-        {
-            bitmap.Save(ms);
-            var bytes = ms.ToArray();
-            using (var sha256 = SHA256.Create())
-            {
-                var hashBytes = sha256.ComputeHash(bytes);
-                return Convert.ToBase64String(hashBytes);
-            }
+            });
         }
     }
 
     public async void OnCopyClick(object? sender, RoutedEventArgs e)
     {
+        if (_clipboardService == null || _historyManager == null) return;
+
         if (sender is Control control && control.DataContext is ClipboardItem item)
         {
             try 
             {
-                var clipboard = GetTopLevel(this)?.Clipboard;
-                if (clipboard == null) return;
-
                 if (item.IsText && item.TextContent != null)
                 {
-                    _lastText = item.TextContent; 
-                    _lastImageHash = null;
+                    // Update manager state to avoid re-adding
+                    _historyManager.UpdateLastText(item.TextContent);
                     
-                    await clipboard.SetTextAsync(item.TextContent);
+                    await _clipboardService.SetTextAsync(item.TextContent);
                 }
                 else if (item.IsImage && item.ImageContent != null)
                 {
-                    _lastImageHash = ComputeImageHash(item.ImageContent);
-                    _lastText = null;
-
-                    var data = new DataObject();
+                    var hash = _clipboardService.ComputeImageHash(item.ImageContent);
+                    _historyManager.UpdateLastImageHash(hash);
                     
-                    using (var ms = new MemoryStream())
-                    {
-                        item.ImageContent.Save(ms);
-                        var bytes = ms.ToArray();
-                        
-                        // Standard for Linux (X11/Wayland usually respect image/png)
-                        data.Set("image/png", new MemoryStream(bytes));
-                        
-                        // Windows compat
-                        data.Set("PNG", new MemoryStream(bytes));
-                    }
-                    
-                    // Fallback
-                    data.Set("Bitmap", item.ImageContent);
-                    
-                    await clipboard.SetDataObjectAsync(data);
-
+                    await _clipboardService.SetImageAsync(item.ImageContent);
                 }
                 
-                // Optional: Flash on copy back too
                 FlashWidget();
             }
             catch (Exception ex)
@@ -322,7 +180,6 @@ public partial class MainWindow : Window
                 Console.WriteLine($"Error al copiar al portapapeles: {ex.Message}");
             }
         }
-
     }
 
     public async void OnSaveClick(object? sender, RoutedEventArgs e)

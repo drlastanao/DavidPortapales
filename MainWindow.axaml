@@ -28,20 +28,20 @@
 
         <!-- Vista Expandida (Historial) -->
         <Border Name="MainView"
-                Background="White"
-                BorderBrush="Gray"
+                Background="#1E1E1E"
+                BorderBrush="#404040"
                 BorderThickness="1"
                 IsVisible="False">
             <Grid RowDefinitions="Auto,*">
-                <DockPanel Grid.Row="0" Background="#f0f0f0" LastChildFill="False">
-                    <TextBlock Text="Historial" VerticalAlignment="Center" Margin="10" FontWeight="Bold"/>
-                    <Button Content="Minimizar (Doble Click)" DockPanel.Dock="Right" Click="OnMinimizeClick" Margin="5"/>
+                <DockPanel Grid.Row="0" Background="#2D2D30" LastChildFill="False">
+                    <TextBlock Text="Historial" VerticalAlignment="Center" Margin="10" FontWeight="Bold" Foreground="#E0E0E0"/>
+                    <Button Content="Minimizar (Doble Click)" DockPanel.Dock="Right" Click="OnMinimizeClick" Margin="5" Foreground="#E0E0E0" Background="#3E3E42" BorderBrush="#505050"/>
                 </DockPanel>
                 
                 <ListBox Grid.Row="1" ItemsSource="{Binding History}" Margin="10">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="local:ClipboardItem">
-                            <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="5">
+                            <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1" Padding="5">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="10,0,0,0">
                                         <Button Content="Copiar" Click="OnCopyClick" IsVisible="{Binding IsText}"/>
@@ -50,26 +50,26 @@
                                     
                                     <StackPanel Spacing="5">
                                         <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="Gray" FontSize="12"/>
-                                            <TextBlock Text="{Binding TypeDisplay}" Foreground="#0077aa" FontSize="12"/>
+                                            <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12"/>
+                                            <TextBlock Text="{Binding TypeDisplay}" Foreground="#569CD6" FontSize="12"/>
                                         </StackPanel>
                                         
                                         <StackPanel IsVisible="{Binding IsText}">
-                                            <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100"/>
+                                            <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100" Foreground="#E0E0E0"/>
                                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                                <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="DimGray"/>
-                                                <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
+                                                <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
                                             </StackPanel>
                                         </StackPanel>
                                         
                                         <StackPanel IsVisible="{Binding IsImage}">
                                             <Image Source="{Binding ImageContent}" MaxHeight="200" Stretch="Uniform" HorizontalAlignment="Left"/>
                                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                                <TextBlock Text="Resolución:" FontSize="10" Foreground="DimGray"/>
-                                                <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="DimGray"/>
-                                                <TextBlock Text="x" FontSize="10" Foreground="DimGray"/>
-                                                <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="DimGray"/>
-                                                <TextBlock Text="px" FontSize="10" Foreground="DimGray"/>
+                                                <TextBlock Text="Resolución:" FontSize="10" Foreground="#CCCCCC"/>
+                                                <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="#CCCCCC"/>
+                                                <TextBlock Text="x" FontSize="10" Foreground="#CCCCCC"/>
+                                                <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="#CCCCCC"/>
+                                                <TextBlock Text="px" FontSize="10" Foreground="#CCCCCC"/>
                                             </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
