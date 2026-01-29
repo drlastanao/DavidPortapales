@@ -44,3 +44,6 @@ artifacts/
 
 # Avalonia
 *.Avalonia/
+
+# Logs
+*.log
