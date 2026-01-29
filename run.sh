@@ -4,7 +4,15 @@
 # Cambiar al directorio donde se encuentra el script
 cd "$(dirname "$0")" || exit
 
-echo "🚀 Iniciando DavidPortapales..."
+echo "🚀 Iniciando proceso..."
+
+echo "🧪 Ejecutando pruebas..."
+dotnet test DavidPortapales.slnx
+
+if [ $? -ne 0 ]; then
+    echo "❌ Las pruebas fallaron. Cancelando ejecución."
+    exit 1
+fi
 
 echo "🧹 Limpiando proyecto..."
 dotnet clean

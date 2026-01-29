@@ -23,7 +23,9 @@ public class ClipboardService
     {
         try
         {
+#pragma warning disable CS0618
             return await _clipboard.GetTextAsync();
+#pragma warning restore CS0618
         }
         catch (Exception ex)
         {
@@ -48,6 +50,7 @@ public class ClipboardService
     {
         try
         {
+#pragma warning disable CS0618
              var data = new DataObject();
             
             using (var ms = new MemoryStream())
@@ -66,6 +69,7 @@ public class ClipboardService
             data.Set("Bitmap", image);
             
             await _clipboard.SetDataObjectAsync(data);
+#pragma warning restore CS0618
         }
         catch (Exception ex)
         {
@@ -77,14 +81,20 @@ public class ClipboardService
     {
         try
         {
-            // 1. Check for Files first (User copied a file)
+            // 1. Check for Files first
+#pragma warning disable CS0618
+            // Use old API (returns string[]) to match DataFormats.FileNames (string)
             var formats = await _clipboard.GetFormatsAsync();
+#pragma warning restore CS0618
+            
             if (formats == null) return null;
 
-            if (formats.Contains(DataFormats.FileNames))
+#pragma warning disable CS0618
+            if (formats.Contains(DataFormats.FileNames)) 
             {
-                 // Handle file drop (image files)
-                 var fileData = await _clipboard.GetDataAsync(DataFormats.FileNames);
+                 var fileData = await _clipboard.GetDataAsync(DataFormats.FileNames); 
+#pragma warning restore CS0618
+                 
                  if (fileData is System.Collections.IEnumerable fileList)
                  {
                      foreach (var item in fileList) 
@@ -100,7 +110,6 @@ public class ClipboardService
                                  }
                                  catch 
                                  {
-                                     // Failed to load this file, try next
                                  }
                              }
                          }
@@ -120,11 +129,13 @@ public class ClipboardService
             
             foreach (var format in imageFormats)
             {
-                if (formats.Any(f => f.Equals(format, StringComparison.OrdinalIgnoreCase)))
+                if (formats.Any(f => string.Equals(f, format, StringComparison.OrdinalIgnoreCase)))
                 {
                     try 
                     {
+#pragma warning disable CS0618
                         var data = await _clipboard.GetDataAsync(format);
+#pragma warning restore CS0618
                         
                         if (data is byte[] bytes)
                         {
@@ -141,7 +152,6 @@ public class ClipboardService
                     }
                     catch
                     {
-                         // Ignore and try next format
                     }
                 }
             }
