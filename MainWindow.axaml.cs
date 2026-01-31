@@ -33,7 +33,8 @@ public partial class MainWindow : Window
         // DataContext will be set in OnOpened after services are ready
         
         // Setup initial state
-        SetMiniMode();
+        // Initial state setup moved to OnOpened to ensure screen coordinates are accurate
+
 
         // Setup Double Click (DoubleTapped) 
         var miniWidget = this.FindControl<Border>("MiniWidget");
@@ -58,6 +59,9 @@ public partial class MainWindow : Window
 
             // Set DataContext now that History is available
             DataContext = this;
+            
+            // Apply initial mode and position
+            SetWindowMode(true);
         }
         else
         {
@@ -71,65 +75,60 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
     
-    private void SetMiniMode()
+    private void SetWindowMode(bool isMini)
     {
-        _isMiniMode = true;
+        _isMiniMode = isMini;
         
         var miniWidget = this.FindControl<Border>("MiniWidget");
         var mainView = this.FindControl<Border>("MainView");
         
-        if (miniWidget != null) miniWidget.IsVisible = true;
-        if (mainView != null) mainView.IsVisible = false;
+        if (miniWidget != null) miniWidget.IsVisible = isMini;
+        if (mainView != null) mainView.IsVisible = !isMini;
 
-        // Resize window to widget size
-        this.Width = 50;
-        this.Height = 50;
-        
-        // Position at top right of CURRENT screen
-        var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
-        if (screen != null)
+        if (isMini)
         {
-            var workingArea = screen.WorkingArea;
-            var x = workingArea.X + workingArea.Width - 50 - 20; // 20px padding from right
-            var y = workingArea.Y + 10; // 10px padding from top
-            this.Position = new PixelPoint((int)x, (int)y);
+            // Resize window to widget size
+            this.Width = 50;
+            this.Height = 50;
+            
+            // Position at top right of CURRENT screen
+            // Shifted 100px more to the left as requested (Original was 20 padding, now 120)
+            var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+            if (screen != null)
+            {
+                var workingArea = screen.WorkingArea;
+                var x = workingArea.X + (workingArea.Width * 0.8); 
+                var y = workingArea.Y + 10; // 10px padding from top
+                this.Position = new PixelPoint((int)x, (int)y);
+            }
         }
-    }
-
-    private void SetExpandedMode()
-    {
-        _isMiniMode = false;
-        
-        var miniWidget = this.FindControl<Border>("MiniWidget");
-        var mainView = this.FindControl<Border>("MainView");
-        
-        if (miniWidget != null) miniWidget.IsVisible = false;
-        if (mainView != null) mainView.IsVisible = true;
-
-        // Resize window to standard size
-        this.Width = 600;
-        this.Height = 500;
-        
-        // Center on screen
-        var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
-        if (screen != null)
+        else
         {
-            var workingArea = screen.WorkingArea;
-            var x = workingArea.X + (workingArea.Width - 600) / 2;
-            var y = workingArea.Y + (workingArea.Height - 500) / 2;
-            this.Position = new PixelPoint(x, y);
+            // Resize window to standard size
+            this.Width = 600;
+            this.Height = 500;
+            
+            // Center on screen
+            var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+            if (screen != null)
+            {
+                var workingArea = screen.WorkingArea;
+                var x = workingArea.X + (workingArea.Width - 600) / 2;
+                var y = workingArea.Y + (workingArea.Height - 500) / 2;
+                this.Position = new PixelPoint((int)x, (int)y);
+            }
         }
     }
     
     private void ToggleMode()
     {
-        if (_isMiniMode) SetExpandedMode();
-        else SetMiniMode();
+        // Toggle based on current state
+        SetWindowMode(!_isMiniMode);
     }
     
     public void OnMinimizeClick(object? sender, RoutedEventArgs e)
     {
-         SetMiniMode();
+         SetWindowMode(true);
     }
 
     public void FlashWidget()
