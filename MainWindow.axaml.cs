@@ -44,7 +44,7 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnOpened(EventArgs e)
+    protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
 
@@ -60,6 +60,9 @@ public partial class MainWindow : Window
             // Set DataContext now that History is available
             DataContext = this;
             
+            // Wait for window manager to map the window
+            await Task.Delay(200);
+
             // Apply initial mode and position
             SetWindowMode(true);
         }
@@ -77,6 +80,9 @@ public partial class MainWindow : Window
     
     private void SetWindowMode(bool isMini)
     {
+        // Capture screen *before* any resizing to improve accuracy
+        var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+
         _isMiniMode = isMini;
         
         var miniWidget = this.FindControl<Border>("MiniWidget");
@@ -90,34 +96,41 @@ public partial class MainWindow : Window
             // Resize window to widget size
             this.Width = 50;
             this.Height = 50;
-            
-            // Position at top right of CURRENT screen
-            // Shifted 100px more to the left as requested (Original was 20 padding, now 120)
-            var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
-            if (screen != null)
-            {
-                var workingArea = screen.WorkingArea;
-                var x = workingArea.X + (workingArea.Width * 0.8); 
-                var y = workingArea.Y + 10; // 10px padding from top
-                this.Position = new PixelPoint((int)x, (int)y);
-            }
         }
         else
         {
             // Resize window to standard size
             this.Width = 600;
             this.Height = 500;
-            
-            // Center on screen
-            var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+        }
+
+        // Defer positioning to allow resize to complete/layout first.
+        // This mitigates race conditions where the Window Manager might override the position.
+        Dispatcher.UIThread.Post(() =>
+        {
             if (screen != null)
             {
                 var workingArea = screen.WorkingArea;
-                var x = workingArea.X + (workingArea.Width - 600) / 2;
-                var y = workingArea.Y + (workingArea.Height - 500) / 2;
-                this.Position = new PixelPoint((int)x, (int)y);
+                PixelPoint newPos;
+
+                if (isMini)
+                {
+                    // Fixed position: Always 120px padding from right + 50px width = 170px offset
+                    var x = workingArea.X + workingArea.Width - 170; 
+                    var y = workingArea.Y + 10; // 10px padding from top
+                    newPos = new PixelPoint((int)x, (int)y);
+                }
+                else
+                {
+                    // Center on screen
+                    var x = workingArea.X + (workingArea.Width - 600) / 2;
+                    var y = workingArea.Y + (workingArea.Height - 500) / 2;
+                    newPos = new PixelPoint((int)x, (int)y);
+                }
+                
+                this.Position = newPos;
             }
-        }
+        }, DispatcherPriority.Input);
     }
     
     private void ToggleMode()
