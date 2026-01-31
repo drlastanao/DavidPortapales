@@ -12,20 +12,84 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia; // For PixelPoint
 using DavidPortapales.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Text;
+
 
 #pragma warning disable CS0618 // Suppress obsolete warnings
 
 namespace DavidPortapales;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, INotifyPropertyChanged
+
 {
     private bool _isMiniMode = true;
     
     private ClipboardService? _clipboardService;
     private HistoryManager? _historyManager;
+    private PasswordGeneratorService _passwordGeneratorService = new PasswordGeneratorService();
+
 
     // Expose History for Binding
     public ObservableCollection<ClipboardItem> History => _historyManager?.History ?? new ObservableCollection<ClipboardItem>();
+
+    // Tabs / Visibility
+    private bool _isHistoryVisible = true;
+    public bool IsHistoryVisible
+    {
+        get => _isHistoryVisible;
+        set { _isHistoryVisible = value; OnPropertyChanged(); }
+    }
+
+    private bool _isPasswordGeneratorVisible = false;
+    public bool IsPasswordGeneratorVisible
+    {
+        get => _isPasswordGeneratorVisible;
+        set { _isPasswordGeneratorVisible = value; OnPropertyChanged(); }
+    }
+
+    // Password Generator Options
+    private int _passwordLength = 12;
+    public int PasswordLength
+    {
+        get => _passwordLength;
+        set { _passwordLength = value; OnPropertyChanged(); }
+    }
+
+    private bool _useUpperCase = true;
+    public bool UseUpperCase
+    {
+        get => _useUpperCase;
+        set { _useUpperCase = value; OnPropertyChanged(); }
+    }
+
+    private bool _useLowerCase = true;
+    public bool UseLowerCase
+    {
+        get => _useLowerCase;
+        set { _useLowerCase = value; OnPropertyChanged(); }
+    }
+
+    private bool _useSpecialChars = true;
+    public bool UseSpecialChars
+    {
+        get => _useSpecialChars;
+        set { _useSpecialChars = value; OnPropertyChanged(); }
+    }
+
+    private string _generatedPassword = "";
+    public string GeneratedPassword
+    {
+        get => _generatedPassword;
+        set { _generatedPassword = value; OnPropertyChanged(); }
+    }
+
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
     public MainWindow()
     {
@@ -229,4 +293,41 @@ public partial class MainWindow : Window
              }
          }
     }
+
+    public void OnSwitchToHistoryClick(object? sender, RoutedEventArgs e)
+    {
+        IsHistoryVisible = true;
+        IsPasswordGeneratorVisible = false;
+    }
+
+    public void OnSwitchToGeneratorClick(object? sender, RoutedEventArgs e)
+    {
+        IsHistoryVisible = false;
+        IsPasswordGeneratorVisible = true;
+    }
+
+    public async void GenerateAndCopyPassword(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            GeneratedPassword = _passwordGeneratorService.GeneratePassword(
+                PasswordLength, 
+                UseUpperCase, 
+                UseLowerCase, 
+                UseSpecialChars
+            );
+
+            if (_clipboardService != null)
+            {
+                await _clipboardService.SetTextAsync(GeneratedPassword);
+                FlashWidget();
+            }
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Error al generar contraseña:./run {ex.Message}");
+        }
+    }
+
+
 }

@@ -34,50 +34,86 @@
                 IsVisible="False">
             <Grid RowDefinitions="Auto,*">
                 <DockPanel Grid.Row="0" Background="#2D2D30" LastChildFill="False">
-                    <TextBlock Text="Historial" VerticalAlignment="Center" Margin="10" FontWeight="Bold" Foreground="#E0E0E0"/>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="10,0,0,0">
+                        <Button Content="Historial" Click="OnSwitchToHistoryClick" Background="Transparent" BorderThickness="0" Foreground="#E0E0E0" FontWeight="Bold"/>
+                        <TextBlock Text="|" VerticalAlignment="Center" Foreground="#505050" Margin="5,0"/>
+                        <Button Content="Generador de Contraseñas" Click="OnSwitchToGeneratorClick" Background="Transparent" BorderThickness="0" Foreground="#E0E0E0"/>
+                    </StackPanel>
                     <Button Content="Minimizar (Doble Click)" DockPanel.Dock="Right" Click="OnMinimizeClick" Margin="5" Foreground="#E0E0E0" Background="#3E3E42" BorderBrush="#505050"/>
                 </DockPanel>
                 
-                <ListBox Grid.Row="1" ItemsSource="{Binding History}" Margin="10">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="local:ClipboardItem">
-                            <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1" Padding="5">
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="10,0,0,0">
-                                        <Button Content="Copiar" Click="OnCopyClick" IsVisible="{Binding IsText}"/>
-                                        <Button Content="Salvar" Click="OnSaveClick" IsVisible="{Binding IsImage}"/>
-                                    </StackPanel>
-                                    
-                                    <StackPanel Spacing="5">
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12"/>
-                                            <TextBlock Text="{Binding TypeDisplay}" Foreground="#569CD6" FontSize="12"/>
+                <Panel Grid.Row="1">
+                    <!-- Historial View -->
+                    <ListBox ItemsSource="{Binding History}" Margin="10" IsVisible="{Binding IsHistoryVisible}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="local:ClipboardItem">
+                                <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1" Padding="5">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="10,0,0,0">
+                                            <Button Content="Copiar" Click="OnCopyClick" IsVisible="{Binding IsText}"/>
+                                            <Button Content="Salvar" Click="OnSaveClick" IsVisible="{Binding IsImage}"/>
                                         </StackPanel>
                                         
-                                        <StackPanel IsVisible="{Binding IsText}">
-                                            <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100" Foreground="#E0E0E0"/>
-                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                                <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
-                                                <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
+                                        <StackPanel Spacing="5">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding TimestampDisplay}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12"/>
+                                                <TextBlock Text="{Binding TypeDisplay}" Foreground="#569CD6" FontSize="12"/>
+                                            </StackPanel>
+                                            
+                                            <StackPanel IsVisible="{Binding IsText}">
+                                                <TextBlock Text="{Binding TextContent}" TextWrapping="Wrap" MaxHeight="100" Foreground="#E0E0E0"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                                    <TextBlock Text="{Binding CharCount, StringFormat='Carácteres: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
+                                                    <TextBlock Text="{Binding WordCount, StringFormat='Palabras: {0}'}" FontSize="10" Foreground="#CCCCCC"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            
+                                            <StackPanel IsVisible="{Binding IsImage}">
+                                                <Image Source="{Binding ImageContent}" MaxHeight="200" Stretch="Uniform" HorizontalAlignment="Left"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                                    <TextBlock Text="Resolución:" FontSize="10" Foreground="#CCCCCC"/>
+                                                    <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="#CCCCCC"/>
+                                                    <TextBlock Text="x" FontSize="10" Foreground="#CCCCCC"/>
+                                                    <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="#CCCCCC"/>
+                                                    <TextBlock Text="px" FontSize="10" Foreground="#CCCCCC"/>
+                                                </StackPanel>
                                             </StackPanel>
                                         </StackPanel>
-                                        
-                                        <StackPanel IsVisible="{Binding IsImage}">
-                                            <Image Source="{Binding ImageContent}" MaxHeight="200" Stretch="Uniform" HorizontalAlignment="Left"/>
-                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
-                                                <TextBlock Text="Resolución:" FontSize="10" Foreground="#CCCCCC"/>
-                                                <TextBlock Text="{Binding ImageWidth}" FontSize="10" Foreground="#CCCCCC"/>
-                                                <TextBlock Text="x" FontSize="10" Foreground="#CCCCCC"/>
-                                                <TextBlock Text="{Binding ImageHeight}" FontSize="10" Foreground="#CCCCCC"/>
-                                                <TextBlock Text="px" FontSize="10" Foreground="#CCCCCC"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </DockPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Password Generator View -->
+                    <Border IsVisible="{Binding IsPasswordGeneratorVisible}" Padding="20">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="Configuración de Contraseña" FontSize="18" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Longitud:" Foreground="#E0E0E0"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Slider Minimum="4" Maximum="64" Value="{Binding PasswordLength}" Width="200"/>
+                                    <TextBlock Text="{Binding PasswordLength}" VerticalAlignment="Center" Foreground="#E0E0E0"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="10">
+                                <CheckBox Content="Usar Mayúsculas (A-Z)" IsChecked="{Binding UseUpperCase}" Foreground="#E0E0E0"/>
+                                <CheckBox Content="Usar Minúsculas (a-z)" IsChecked="{Binding UseLowerCase}" Foreground="#E0E0E0"/>
+                                <CheckBox Content="Usar Caracteres Especiales (!@#...)" IsChecked="{Binding UseSpecialChars}" Foreground="#E0E0E0"/>
+                            </StackPanel>
+
+                            <Button Content="Generar y Copiar al Portapapeles" Click="GenerateAndCopyPassword" 
+                                    HorizontalAlignment="Left" Padding="15,10" Background="#007ACC" Foreground="White" FontWeight="Bold"/>
+
+                            <StackPanel Spacing="5" Margin="0,20,0,0">
+                                <TextBlock Text="Contraseña Generada:" Foreground="#AAAAAA" FontSize="12"/>
+                                <TextBox Text="{Binding GeneratedPassword}" IsReadOnly="True" Background="#252526" Foreground="#CE9178" FontFamily="Monospace" FontSize="16" BorderThickness="0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Panel>
             </Grid>
         </Border>
     </Grid>
